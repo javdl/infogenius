@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gcloud --version:*)",
+      "Bash(gcloud config:*)",
+      "Bash(gcloud beta run services update:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
