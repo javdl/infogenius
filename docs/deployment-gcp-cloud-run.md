@@ -39,24 +39,38 @@ Or via the console: https://console.cloud.google.com/security/secret-manager?pro
 
 ## Step 3: Deploy to Cloud Run
 
-Deploy the service from source (builds using the Dockerfile):
+⚠️ **Security Note**: This app uses client-side Gemini API calls, which means the API key is baked into the JavaScript bundle at build time. While protected by IAP, anyone with access can extract the key from the browser. For production use, consider implementing a backend proxy server.
+
+### Get the API Key Value
+
+First, retrieve the API key from Secret Manager:
+
+```bash
+GEMINI_KEY=$(gcloud secrets versions access latest \
+  --secret=GEMINI_API_KEY \
+  --project=gen-lang-client-0822324815)
+```
+
+### Deploy with Build Arg
+
+Deploy the service, passing the API key as a build argument:
 
 ```bash
 gcloud run deploy infogenius \
   --source . \
   --region europe-west4 \
   --project gen-lang-client-0822324815 \
-  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --set-build-env-vars GEMINI_API_KEY="$GEMINI_KEY" \
   --no-allow-unauthenticated \
   --port 8080
 ```
 
-If the deployment fails with a secret access error, grant the service account access:
+If the deployment fails with a secret access error, grant the Cloud Build service account access to the secret:
 
 ```bash
 gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
   --project gen-lang-client-0822324815 \
-  --member="serviceAccount:596433820578-compute@developer.gserviceaccount.com" \
+  --member="serviceAccount:596433820578@cloudbuild.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
 
@@ -114,11 +128,15 @@ Users will be prompted to authenticate with their Google account. Only users mat
 To deploy updates, run the deploy command again from the project root:
 
 ```bash
+GEMINI_KEY=$(gcloud secrets versions access latest \
+  --secret=GEMINI_API_KEY \
+  --project=gen-lang-client-0822324815)
+
 gcloud run deploy infogenius \
   --source . \
   --region europe-west4 \
   --project gen-lang-client-0822324815 \
-  --set-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --set-build-env-vars GEMINI_API_KEY="$GEMINI_KEY" \
   --no-allow-unauthenticated \
   --port 8080
 ```

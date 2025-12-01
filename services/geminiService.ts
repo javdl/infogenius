@@ -5,9 +5,11 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { AspectRatio, ComplexityLevel, VisualStyle, ResearchResult, SearchResultItem, Language } from "../types";
 
-// Create a fresh client for every request to ensure the latest API key from process.env.API_KEY is used
+// Create a fresh client for every request to ensure the latest API key is used
+// Try GEMINI_API_KEY first (Cloud Run), then fall back to API_KEY (legacy)
 const getAi = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  return new GoogleGenAI({ apiKey });
 };
 
 // Updated to use 'gemini-3-pro-image-preview' for all operations including search grounding and image generation as requested

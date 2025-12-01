@@ -8,9 +8,18 @@ RUN npm install
 
 COPY . .
 
-# Build the application
-# Note: If you have environment variables that need to be baked in at build time,
-# you might need to pass them as build args (ARG) here.
+# Accept API key as build argument and set as environment variable for build
+ARG GEMINI_API_KEY
+ENV GEMINI_API_KEY=$GEMINI_API_KEY
+
+# Verify API key is set before building
+RUN if [ -z "$GEMINI_API_KEY" ]; then \
+      echo "ERROR: GEMINI_API_KEY build argument is required"; \
+      exit 1; \
+    fi
+RUN echo "Building with API key configured"
+
+# Build the application (Vite will bake the API key into the bundle)
 RUN npm run build
 
 # Production stage

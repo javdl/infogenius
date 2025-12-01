@@ -30,10 +30,3 @@ export interface ResearchResult {
   facts: string[];
   searchResults: SearchResultItem[];
 }
-
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-}

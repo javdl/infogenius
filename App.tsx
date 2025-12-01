@@ -13,7 +13,7 @@ import Infographic from './components/Infographic';
 import Loading from './components/Loading';
 import IntroScreen from './components/IntroScreen';
 import SearchResults from './components/SearchResults';
-import { Search, AlertCircle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Key, CreditCard, ExternalLink, DollarSign } from 'lucide-react';
+import { Search, AlertCircle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [showIntro, setShowIntro] = useState(true);
@@ -33,10 +33,6 @@ const App: React.FC = () => {
   const [currentSearchResults, setCurrentSearchResults] = useState<SearchResultItem[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // API Key State
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [checkingKey, setCheckingKey] = useState(true);
-
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -44,39 +40,6 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-
-  // Check for API Key on Mount
-  useEffect(() => {
-    const checkKey = async () => {
-      try {
-        if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          setHasApiKey(hasKey);
-        } else {
-          // Development environment fallback or if not running in AI Studio context
-          setHasApiKey(true);
-        }
-      } catch (e) {
-        console.error("Error checking API key:", e);
-      } finally {
-        setCheckingKey(false);
-      }
-    };
-    checkKey();
-  }, []);
-
-  const handleSelectKey = async () => {
-    if (window.aistudio && window.aistudio.openSelectKey) {
-      try {
-        await window.aistudio.openSelectKey();
-        // Assume success due to race condition logic mentioned in guidelines
-        setHasApiKey(true);
-        setError(null);
-      } catch (e) {
-        console.error("Failed to open key selector:", e);
-      }
-    }
-  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,13 +82,13 @@ const App: React.FC = () => {
 
       setImageHistory([newImage, ...imageHistory]);
     } catch (err: any) {
-      console.error(err);
+      console.error("Image generation error:", err);
       // Check for specific billing/key errors
       if (err.message && (err.message.includes("Requested entity was not found") || err.message.includes("404") || err.message.includes("403"))) {
-          setError("Access denied. The selected API key does not have access to the required models. Please select a project with billing enabled.");
-          setHasApiKey(false); // Force the key selection modal to reappear
+          setError("Access denied. Please check that your API key has access to Gemini 3 Pro models and billing is enabled.");
       } else {
-          setError('The image generation service is temporarily unavailable. Please try again.');
+          // Show the actual error message for debugging
+          setError(`Error: ${err.message || 'The image generation service is temporarily unavailable. Please try again.'}`);
       }
     } finally {
       setIsLoading(false);
@@ -154,12 +117,11 @@ const App: React.FC = () => {
       };
       setImageHistory([newImage, ...imageHistory]);
     } catch (err: any) {
-      console.error(err);
+      console.error("Image edit error:", err);
       if (err.message && (err.message.includes("Requested entity was not found") || err.message.includes("404") || err.message.includes("403"))) {
-          setError("Access denied. Please select a valid API key with billing enabled.");
-          setHasApiKey(false);
+          setError("Access denied. Please check that your API key has access to Gemini 3 Pro models and billing is enabled.");
       } else {
-          setError('Modification failed. Try a different command.');
+          setError(`Modification failed: ${err.message || 'Try a different command.'}`);
       }
     } finally {
       setIsLoading(false);
@@ -172,73 +134,8 @@ const App: React.FC = () => {
      setImageHistory([img, ...newHistory]);
   };
 
-  // Modal for API Key Selection
-  const KeySelectionModal = () => (
-    <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-        <div className="bg-white dark:bg-slate-900 border-2 border-amber-500/50 rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500"></div>
-            
-            <div className="flex flex-col items-center text-center space-y-6">
-                <div className="relative">
-                    <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400 mb-2 border-4 border-white dark:border-slate-900 shadow-lg">
-                        <CreditCard className="w-8 h-8" />
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white dark:border-slate-900 uppercase tracking-wide">
-                        Paid App
-                    </div>
-                </div>
-                
-                <div className="space-y-3">
-                    <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-                        Paid API Key Required
-                    </h2>
-                    <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed font-medium">
-                        This application uses premium Gemini 3 Pro models which are not available on the free tier.
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                        You must select a Google Cloud Project with <span className="font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1 py-0.5 rounded">Billing Enabled</span> to proceed.
-                    </p>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 w-full text-left">
-                    <div className="flex items-start gap-3">
-                         <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400 shrink-0">
-                            <DollarSign className="w-4 h-4" />
-                         </div>
-                         <div className="space-y-1">
-                            <p className="text-xs font-bold text-slate-900 dark:text-slate-200">Billing Required</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Standard API keys will fail. Please ensure you have set up billing in Google AI Studio.
-                            </p>
-                             <a 
-                                href="https://ai.google.dev/gemini-api/docs/billing" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline mt-1"
-                            >
-                                View Billing Documentation <ExternalLink className="w-3 h-3" />
-                            </a>
-                         </div>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={handleSelectKey}
-                    className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold shadow-lg shadow-amber-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
-                >
-                    <Key className="w-4 h-4" />
-                    <span>Select Paid API Key</span>
-                </button>
-            </div>
-        </div>
-    </div>
-  );
-
   return (
     <>
-    {/* Block usage if key is missing */}
-    {!checkingKey && !hasApiKey && <KeySelectionModal />}
-
     {showIntro ? (
       <IntroScreen onComplete={() => setShowIntro(false)} />
     ) : (
@@ -270,15 +167,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-              <button 
-                onClick={handleSelectKey}
-                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs font-medium transition-colors border border-slate-200 dark:border-white/10"
-                title="Change API Key"
-              >
-                <Key className="w-3.5 h-3.5" />
-                <span>API Key</span>
-              </button>
-
               <button 
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors border border-slate-200 dark:border-white/10 shadow-sm"
@@ -430,14 +318,6 @@ const App: React.FC = () => {
             <AlertCircle className="w-6 h-6 flex-shrink-0 text-red-500 dark:text-red-400" />
             <div className="flex-1">
                 <p className="font-medium">{error}</p>
-                {(error.includes("Access denied") || error.includes("billing")) && (
-                    <button 
-                        onClick={handleSelectKey}
-                        className="mt-2 text-xs font-bold text-red-700 dark:text-red-300 underline hover:text-red-900 dark:hover:text-red-100"
-                    >
-                        Select a different API key
-                    </button>
-                )}
             </div>
           </div>
         )}
