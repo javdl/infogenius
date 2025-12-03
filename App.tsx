@@ -36,9 +36,29 @@ const App: React.FC = () => {
   const [loadingFacts, setLoadingFacts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
+  const [imageHistory, setImageHistory] = useState<GeneratedImage[]>(() => {
+    // Load from localStorage on initial mount
+    try {
+      const saved = localStorage.getItem('infogenius-image-history');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load image history from localStorage:', e);
+    }
+    return [];
+  });
   const [currentSearchResults, setCurrentSearchResults] = useState<SearchResultItem[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Persist image history to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('infogenius-image-history', JSON.stringify(imageHistory));
+    } catch (e) {
+      console.error('Failed to save image history to localStorage:', e);
+    }
+  }, [imageHistory]);
 
   // Auth state
   const [user, setUser] = useState<AuthUser | null>(null);
