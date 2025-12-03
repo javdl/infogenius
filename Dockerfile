@@ -10,18 +10,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Accept API key as build argument and set as environment variable for build
-ARG GEMINI_API_KEY
-ENV GEMINI_API_KEY=$GEMINI_API_KEY
-
-# Verify API key is set before building
-RUN if [ -z "$GEMINI_API_KEY" ]; then \
-      echo "ERROR: GEMINI_API_KEY build argument is required"; \
-      exit 1; \
-    fi
-RUN echo "Building with API key configured"
-
-# Build the application (Vite will bake the API key into the bundle)
+# Build frontend (Vite) and server (TypeScript)
 RUN pnpm build
 
 # Production stage
@@ -29,14 +18,18 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install serve to run the static application
-RUN npm install -g serve
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy the build output from the builder stage
+# Copy package files and install production dependencies only
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy built frontend and server
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-server ./dist-server
 
-# Cloud Run provides the PORT environment variable
+# Railway provides PORT, default to 8080
 ENV PORT=8080
 
-# Serve the app on the specified port
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+# Run the Express server
+CMD ["node", "dist-server/index.js"]

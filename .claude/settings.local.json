@@ -3,7 +3,11 @@
     "allow": [
       "Bash(gcloud --version:*)",
       "Bash(gcloud config:*)",
-      "Bash(gcloud beta run services update:*)"
+      "Bash(gcloud beta run services update:*)",
+      "Bash(pnpm install)",
+      "Bash(railway up:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway status:*)"
     ],
     "deny": [],
     "ask": []
