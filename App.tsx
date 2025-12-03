@@ -4,16 +4,23 @@
 */
 import React, { useState, useEffect } from 'react';
 import { GeneratedImage, ComplexityLevel, VisualStyle, Language, SearchResultItem } from './types';
-import { 
-  researchTopicForPrompt, 
-  generateInfographicImage, 
+import {
+  researchTopicForPrompt,
+  generateInfographicImage,
   editInfographicImage,
 } from './services/geminiService';
 import Infographic from './components/Infographic';
 import Loading from './components/Loading';
 import IntroScreen from './components/IntroScreen';
 import SearchResults from './components/SearchResults';
-import { Search, AlertCircle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon } from 'lucide-react';
+import { Search, AlertCircle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, LogIn, LogOut, User } from 'lucide-react';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 const App: React.FC = () => {
   const [showIntro, setShowIntro] = useState(true);
@@ -22,16 +29,55 @@ const App: React.FC = () => {
   const [complexityLevel, setComplexityLevel] = useState<ComplexityLevel>('High School');
   const [visualStyle, setVisualStyle] = useState<VisualStyle>('Default');
   const [language, setLanguage] = useState<Language>('English');
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [loadingStep, setLoadingStep] = useState<number>(0);
   const [loadingFacts, setLoadingFacts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
   const [currentSearchResults, setCurrentSearchResults] = useState<SearchResultItem[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Auth state
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Check auth status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        } else if (response.status === 403) {
+          setAuthError('Access restricted to @fashionunited.com email addresses');
+        }
+        // 401 is expected when not logged in
+      } catch {
+        // Network error or server down - continue without auth
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    // Check for auth errors in URL
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get('error');
+    if (urlError === 'domain_restricted') {
+      setAuthError('Access restricted to @fashionunited.com email addresses');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (urlError === 'auth_failed') {
+      setAuthError('Authentication failed. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -167,7 +213,35 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-              <button 
+              {/* Auth UI */}
+              {!authLoading && (
+                user ? (
+                  <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10">
+                      <User className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+                        {user.firstName || user.email.split('@')[0]}
+                      </span>
+                    </div>
+                    <a
+                      href="/logout"
+                      className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors border border-slate-200 dark:border-white/10 shadow-sm"
+                      title="Sign out"
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </a>
+                  </div>
+                ) : (
+                  <a
+                    href="/login"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-600 text-white font-medium hover:bg-cyan-700 transition-colors shadow-sm"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign in</span>
+                  </a>
+                )
+              )}
+              <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors border border-slate-200 dark:border-white/10 shadow-sm"
                 title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -197,7 +271,8 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Search Form */}
+          {/* Search Form - only show when authenticated */}
+          {user && (
           <form onSubmit={handleGenerate} className={`relative z-20 transition-all duration-300 ${isLoading ? 'opacity-50 pointer-events-none scale-95 blur-sm' : 'scale-100'}`}>
             
             <div className="relative group">
@@ -309,9 +384,42 @@ const App: React.FC = () => {
                 </div>
             </div>
           </form>
+          )}
         </div>
 
         {isLoading && <Loading status={loadingMessage} step={loadingStep} facts={loadingFacts} />}
+
+        {/* Auth error */}
+        {authError && (
+          <div className="max-w-2xl mx-auto mt-8 p-6 bg-amber-100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl flex items-center gap-4 text-amber-800 dark:text-amber-200 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 shadow-sm">
+            <AlertCircle className="w-6 h-6 flex-shrink-0 text-amber-500 dark:text-amber-400" />
+            <div className="flex-1">
+                <p className="font-medium">{authError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Login prompt when not authenticated */}
+        {!authLoading && !user && !authError && (
+          <div className="max-w-2xl mx-auto mt-8 p-8 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl text-center backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 shadow-lg">
+            <div className="mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-cyan-100 dark:bg-cyan-500/20 mb-4">
+                <LogIn className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Sign in to continue</h2>
+              <p className="text-slate-600 dark:text-slate-400">
+                This app is restricted to FashionUnited employees.
+              </p>
+            </div>
+            <a
+              href="/login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold hover:brightness-110 transition-all shadow-lg"
+            >
+              <LogIn className="w-5 h-5" />
+              Sign in with WorkOS
+            </a>
+          </div>
+        )}
 
         {error && (
           <div className="max-w-2xl mx-auto mt-8 p-6 bg-red-100 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl flex items-center gap-4 text-red-800 dark:text-red-200 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 shadow-sm">

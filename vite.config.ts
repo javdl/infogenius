@@ -10,6 +10,18 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+      },
+      '/login': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/callback': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/logout': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
       }
     }
   },

@@ -4,6 +4,18 @@
 */
 import { ComplexityLevel, VisualStyle, ResearchResult, Language } from "../types";
 
+// Helper to handle auth errors
+const handleAuthError = (response: Response) => {
+  if (response.status === 401) {
+    // Session expired or not authenticated - redirect to login
+    window.location.href = '/login';
+    throw new Error('Session expired. Redirecting to login...');
+  }
+  if (response.status === 403) {
+    throw new Error('Access restricted to @fashionunited.com email addresses');
+  }
+};
+
 export const researchTopicForPrompt = async (
   topic: string,
   level: ComplexityLevel,
@@ -17,6 +29,7 @@ export const researchTopicForPrompt = async (
   });
 
   if (!response.ok) {
+    handleAuthError(response);
     const error = await response.json().catch(() => ({ error: 'Research failed' }));
     throw new Error(error.error || 'Research failed');
   }
@@ -32,6 +45,7 @@ export const generateInfographicImage = async (prompt: string): Promise<string> 
   });
 
   if (!response.ok) {
+    handleAuthError(response);
     const error = await response.json().catch(() => ({ error: 'Image generation failed' }));
     throw new Error(error.error || 'Image generation failed');
   }
@@ -67,6 +81,7 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
   });
 
   if (!response.ok) {
+    handleAuthError(response);
     const error = await response.json().catch(() => ({ error: 'Image editing failed' }));
     throw new Error(error.error || 'Image editing failed');
   }

@@ -7,7 +7,14 @@
       "Bash(pnpm install)",
       "Bash(railway up:*)",
       "Bash(railway logs:*)",
-      "Bash(railway status:*)"
+      "Bash(railway status:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(pnpm add:*)",
+      "Bash(railway service:*)",
+      "Bash(railway variables:*)",
+      "Bash(git -C /Volumes/data/git/fuww/deploy add dns/dns_records_fashionunited_com.tf)",
+      "Bash(git -C /Volumes/data/git/fuww/deploy commit -m \"$(cat <<''EOF''\ndns: Point infogenius.fashionunited.com to Railway\n\nChange CNAME from ghs.googlehosted.com to sbpwqo0y.up.railway.app\nfor Railway hosting deployment.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
