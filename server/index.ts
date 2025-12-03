@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { WorkOS } from '@workos-inc/node';
 import { SignJWT, jwtVerify } from 'jose';
 import { researchTopicForPrompt, generateInfographicImage, editInfographicImage } from './geminiService.js';
+import logger from './logger.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -37,6 +38,27 @@ declare global {
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  // Log incoming request
+  logger.request(req.method, req.path, {
+    userAgent: req.get('user-agent'),
+    ip: req.ip,
+  });
+
+  // Log response when finished
+  res.on('finish', () => {
+    const durationMs = Date.now() - startTime;
+    logger.response(req.method, req.path, res.statusCode, durationMs, {
+      contentLength: res.get('content-length'),
+    });
+  });
+
+  next();
+});
+
 // Auth middleware - checks JWT session and @fashionunited.com domain
 async function withAuth(req: Request, res: Response, next: NextFunction) {
   try {
@@ -63,7 +85,7 @@ async function withAuth(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ error: 'Invalid session' });
     }
   } catch (error) {
-    console.error('Auth error:', error);
+    logger.error('Auth error', { error: error instanceof Error ? error.message : String(error) });
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
@@ -130,7 +152,7 @@ app.get('/callback', async (req, res) => {
 
     res.redirect('/');
   } catch (error) {
-    console.error('Callback error:', error);
+    logger.error('OAuth callback error', { error: error instanceof Error ? error.message : String(error) });
     res.redirect('/?error=auth_failed');
   }
 });
@@ -156,9 +178,10 @@ app.post('/api/research', withAuth, async (req, res) => {
     }
 
     const result = await researchTopicForPrompt(topic, complexityLevel, visualStyle, language);
+    logger.info('Research completed', { topic, complexityLevel, factsCount: result.facts.length });
     res.json(result);
   } catch (error) {
-    console.error('Research error:', error);
+    logger.error('Research failed', { topic, error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Research failed' });
   }
 });
@@ -172,9 +195,10 @@ app.post('/api/generate-image', withAuth, async (req, res) => {
     }
 
     const imageData = await generateInfographicImage(prompt);
+    logger.info('Image generated', { promptLength: prompt.length });
     res.json({ imageData });
   } catch (error) {
-    console.error('Generate image error:', error);
+    logger.error('Image generation failed', { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Image generation failed' });
   }
 });
@@ -188,9 +212,10 @@ app.post('/api/edit-image', withAuth, async (req, res) => {
     }
 
     const imageData = await editInfographicImage(imageBase64, editInstruction);
+    logger.info('Image edited', { editInstruction });
     res.json({ imageData });
   } catch (error) {
-    console.error('Edit image error:', error);
+    logger.error('Image edit failed', { editInstruction, error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ error: error instanceof Error ? error.message : 'Image editing failed' });
   }
 });
@@ -204,5 +229,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info('Server started', { port: PORT, nodeEnv: process.env.NODE_ENV || 'development' });
 });
