@@ -4,6 +4,9 @@
 */
 import { ComplexityLevel, VisualStyle, ResearchResult, Language } from "../types";
 
+// Request timeout in milliseconds (3 minutes)
+const REQUEST_TIMEOUT_MS = 180000;
+
 // Helper to handle auth errors
 const handleAuthError = (response: Response) => {
   if (response.status === 401) {
@@ -16,13 +19,34 @@ const handleAuthError = (response: Response) => {
   }
 };
 
+// Helper to create fetch with timeout
+const fetchWithTimeout = async (url: string, options: RequestInit): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const researchTopicForPrompt = async (
   topic: string,
   level: ComplexityLevel,
   style: VisualStyle,
   language: Language
 ): Promise<ResearchResult> => {
-  const response = await fetch('/api/research', {
+  const response = await fetchWithTimeout('/api/research', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topic, complexityLevel: level, visualStyle: style, language })
@@ -38,7 +62,7 @@ export const researchTopicForPrompt = async (
 };
 
 export const generateInfographicImage = async (prompt: string): Promise<string> => {
-  const response = await fetch('/api/generate-image', {
+  const response = await fetchWithTimeout('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })
@@ -74,7 +98,7 @@ export const fixInfographicImage = async (currentImageBase64: string, correction
 };
 
 export const editInfographicImage = async (currentImageBase64: string, editInstruction: string): Promise<string> => {
-  const response = await fetch('/api/edit-image', {
+  const response = await fetchWithTimeout('/api/edit-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ imageBase64: currentImageBase64, editInstruction })

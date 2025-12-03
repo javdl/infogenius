@@ -16,6 +16,19 @@ interface ResearchResult {
   searchResults: SearchResultItem[];
 }
 
+// Request timeout in milliseconds (3 minutes)
+const REQUEST_TIMEOUT_MS = 180000;
+
+// Helper to wrap a promise with a timeout
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeoutMs)
+    )
+  ]);
+};
+
 // Create client using runtime environment variable
 const getAi = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -89,13 +102,13 @@ export const researchTopicForPrompt = async (
     [A highly detailed image generation prompt describing the visual composition, colors, and layout for the infographic. Do not include citations in the prompt.]
   `;
 
-  const response = await getAi().models.generateContent({
+  const response = await withTimeout(getAi().models.generateContent({
     model: TEXT_MODEL,
     contents: systemPrompt,
     config: {
       tools: [{ googleSearch: {} }],
     },
-  });
+  }));
 
   const text = response.text || "";
 
@@ -137,7 +150,7 @@ export const researchTopicForPrompt = async (
 };
 
 export const generateInfographicImage = async (prompt: string): Promise<string> => {
-  const response = await getAi().models.generateContent({
+  const response = await withTimeout(getAi().models.generateContent({
     model: IMAGE_MODEL,
     contents: {
       parts: [{ text: prompt }]
@@ -145,7 +158,7 @@ export const generateInfographicImage = async (prompt: string): Promise<string> 
     config: {
       responseModalities: [Modality.IMAGE],
     }
-  });
+  }));
 
   const part = response.candidates?.[0]?.content?.parts?.[0];
   if (part && part.inlineData && part.inlineData.data) {
@@ -157,7 +170,7 @@ export const generateInfographicImage = async (prompt: string): Promise<string> 
 export const editInfographicImage = async (currentImageBase64: string, editInstruction: string): Promise<string> => {
   const cleanBase64 = currentImageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
 
-  const response = await getAi().models.generateContent({
+  const response = await withTimeout(getAi().models.generateContent({
     model: EDIT_MODEL,
     contents: {
       parts: [
@@ -168,7 +181,7 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
     config: {
       responseModalities: [Modality.IMAGE],
     }
-  });
+  }));
 
   const part = response.candidates?.[0]?.content?.parts?.[0];
   if (part && part.inlineData && part.inlineData.data) {
