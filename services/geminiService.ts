@@ -6,9 +6,8 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { AspectRatio, ComplexityLevel, VisualStyle, ResearchResult, SearchResultItem, Language } from "../types";
 
 // Create a fresh client for every request to ensure the latest API key is used
-// Try GEMINI_API_KEY first (Cloud Run), then fall back to API_KEY (legacy)
 const getAi = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   return new GoogleGenAI({ apiKey });
 };
 

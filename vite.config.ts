@@ -1,14 +1,14 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(() => {
-    // Read directly from process.env (set by Docker ENV during build)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+export default defineConfig(({ mode }) => {
+    // Load env file based on mode in the current working directory
+    const env = loadEnv(mode, process.cwd(), '');
+    const apiKey = env.GEMINI_API_KEY;
 
-    // Validate key exists at build time
     if (!apiKey) {
-      console.error('ERROR: No API key found. Set GEMINI_API_KEY environment variable.');
+      console.error('ERROR: GEMINI_API_KEY not found. Set it in .env.local file.');
       process.exit(1);
     }
 
@@ -21,7 +21,6 @@ export default defineConfig(() => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(apiKey),
         'process.env.GEMINI_API_KEY': JSON.stringify(apiKey)
       },
       resolve: {

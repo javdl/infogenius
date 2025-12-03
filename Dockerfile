@@ -1,10 +1,12 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
@@ -20,7 +22,7 @@ RUN if [ -z "$GEMINI_API_KEY" ]; then \
 RUN echo "Building with API key configured"
 
 # Build the application (Vite will bake the API key into the bundle)
-RUN npm run build
+RUN pnpm build
 
 # Production stage
 FROM node:20-alpine AS runner

@@ -9,11 +9,13 @@ InfoGenius Vision is a React web application that generates AI-powered infograph
 ## Commands
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start development server (port 3000)
-npm run build        # Build for production (outputs to dist/)
-npm run preview      # Preview production build
+pnpm install         # Install dependencies
+pnpm dev             # Start development server (port 3000)
+pnpm build           # Build for production (outputs to dist/)
+pnpm preview         # Preview production build
 ```
+
+No linting or testing is currently configured.
 
 ## Environment Setup
 
@@ -26,54 +28,39 @@ GEMINI_API_KEY=your_api_key_here
 
 ## Deployment
 
-The app can be deployed to Google Cloud Run. See `docs/deployment-gcp-cloud-run.md` for complete deployment instructions including:
-- Cloud Run deployment with IAP authentication
-- Secret Manager configuration for API keys
-- Multi-stage Docker build (Node 20 Alpine → serve static files)
+See `docs/deployment-gcp-cloud-run.md` for Cloud Run deployment with IAP authentication.
+
+**Docker Build**: Multi-stage build (Node 20 Alpine) that bakes `GEMINI_API_KEY` into the JS bundle at build time, then serves static files via `serve` on port 8080.
 
 ## Architecture
 
 **Entry Point**: `index.tsx` → `App.tsx`
 
-**State Management**: All state lives in `App.tsx` (no Redux/Context). State includes:
-- Form inputs (topic, complexity, style, language)
-- Loading state and progress messages
-- Image history (not persisted, in-memory only)
-- Search results from grounding
-- API key validation state (for AI Studio integration)
+**State Management**: All state lives in `App.tsx` (no Redux/Context). State includes form inputs, loading state, image history (in-memory only), and search results from grounding.
 
 **Core Flow**:
 1. User enters topic with settings (complexity, style, language)
-2. `researchTopicForPrompt()` in `geminiService.ts` uses Gemini 3 Pro Preview with Google Search grounding to research topic and generate an image prompt
-3. `generateInfographicImage()` generates the infographic using Gemini 3 Pro Image Preview
-4. User can edit/refine the image via `editInfographicImage()` which takes the current image + edit instruction
-
-**Components** (`components/`):
-- `IntroScreen.tsx` - Animated splash screen with skip option
-- `Loading.tsx` - Research progress display with fact cycling
-- `Infographic.tsx` - Image display with fullscreen, zoom, download, and edit controls
-- `SearchResults.tsx` - Displays grounding sources from research
+2. `researchTopicForPrompt()` uses Gemini with Google Search grounding to research and generate an image prompt
+3. `generateInfographicImage()` generates the infographic
+4. User can edit/refine via `editInfographicImage()` with the current image + edit instruction
 
 **Services** (`services/geminiService.ts`):
-- Handles all Gemini API interactions
-- Models: `gemini-3-pro-preview` (text/research), `gemini-3-pro-image-preview` (image generation/editing)
-- Uses Google Search tool for grounding research results
-- API client instantiated fresh per request via `getAi()` to pick up latest API key from `process.env.API_KEY`
+- `researchTopicForPrompt()` - Research with Google Search grounding, returns facts + image prompt
+- `generateInfographicImage()` - Generate infographic from prompt
+- `editInfographicImage()` - Edit existing image with instruction
+- Models: `gemini-3-pro-preview` (text), `gemini-3-pro-image-preview` (image)
+- API client instantiated fresh per request via `getAi()` to pick up latest API key
 
-**Types** (`types.ts`):
-- `ComplexityLevel`: Elementary | High School | College | Expert
-- `VisualStyle`: Default | Minimalist | Realistic | Cartoon | Vintage | Futuristic | 3D Render | Sketch
-- `Language`: 10 supported languages
-- `GeneratedImage`, `SearchResultItem`, `ResearchResult` interfaces
+**Types** (`types.ts`): `ComplexityLevel`, `VisualStyle`, `Language`, `GeneratedImage`, `SearchResultItem`, `ResearchResult`
 
 ## Key Implementation Details
 
-- **API Key Handling**: API key is baked into the JavaScript bundle at build time via Vite's `define` config. Supports both `GEMINI_API_KEY` (Cloud Run) and `API_KEY` (legacy) environment variable names.
-  - ⚠️ Security: Since the key is client-side, anyone with app access can extract it from the browser. IAP provides network-level protection.
+- **API Key Handling**: Baked into JS bundle at build time via Vite's `define` config.
   - For local dev: Set `GEMINI_API_KEY` in `.env.local`
-  - For Cloud Run: Pass as build arg via `--set-build-env-vars`
-- **AI Studio Integration**: App detects AI Studio context via `window.aistudio.hasSelectedApiKey()` and shows key selection modal if needed
-- **Dark/light mode**: Toggle persisted via `document.documentElement.classList` (not localStorage)
-- **Image history**: Maintained in component state (not persisted, lost on refresh)
-- **Aspect ratio**: Hardcoded to 16:9 in all API calls
+  - For Cloud Run: Pass via `--set-build-env-vars`
+  - ⚠️ Client-side key is extractable from browser; IAP provides network-level protection
+- **AI Studio Integration**: Detects context via `window.aistudio.hasSelectedApiKey()`
+- **Dark/light mode**: Toggle via `document.documentElement.classList` (not persisted to localStorage)
+- **Image history**: In-memory only, lost on refresh
+- **Aspect ratio**: Hardcoded to 16:9
 - **Path alias**: `@/*` maps to project root
