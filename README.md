@@ -8,6 +8,8 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1E0cq3dwhk9zNIqHYG297vKhBqFW6QWlF
 
+https://infogenius.fashionunited.com
+
 ## Run Locally
 
 **Prerequisites:**  Node.js, pnpm
